@@ -1,4 +1,3 @@
-import { ChatOpenAI } from "@langchain/openai";
 import { ToolNode } from "@langchain/langgraph/prebuilt";
 import wxflows from "@wxflows/sdk/langchain";
 import {
@@ -20,6 +19,7 @@ import {
   ChatPromptTemplate,
   MessagesPlaceholder,
 } from "@langchain/core/prompts";
+import { ChatDeepSeek } from "@langchain/deepseek";
 
 // Customers as: https://introspection.apis.stepzen.com/customers
 // Comments at: https://dummyjson.com/comments
@@ -43,15 +43,12 @@ const tools = await toolClient.lcTools;
 const toolNode = new ToolNode(tools);
 
 export const initializeModel = () => {
-  const model = new ChatOpenAI({
+  const model = new ChatDeepSeek({
     model: "deepseek-chat",
     apiKey: process.env.DEEPSEEK_API_KEY,
     temperature: 0.7,
     maxTokens: 4096,
     streaming: true,
-    modelKwargs: {
-      base_url: "https://api.deepseek.com/v1",
-    },
     callbacks: [
       {
         handleLLMStart: async () => {},
