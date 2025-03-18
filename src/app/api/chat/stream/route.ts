@@ -62,14 +62,26 @@ export async function POST(req: Request) {
 
           // Process the events
           for await (const event of eventStream) {
-            // console.log("Event:", event);
-
             if (event.event === "on_chat_model_stream") {
               const token = event.data.chunk;
               if (token) {
-                // Access the text property from the AIMessageChunk
-                const text = token.content.at(0)?.["text"];
-                if (!text) {
+                // AIMessageChunkからテキストを取得（形式に応じて処理を分ける）
+                let text;
+
+                // 配列形式のcontentの場合
+                if (Array.isArray(token.content) && token.content.length > 0) {
+                  const content = token.content[0];
+                  text =
+                    typeof content === "object" && "text" in content
+                      ? content.text
+                      : content;
+                }
+                // 文字列形式のcontentの場合
+                else if (typeof token.content === "string") {
+                  text = token.content;
+                }
+
+                if (text) {
                   await sendSSEMessage(writer, {
                     type: StreamMessageType.Token,
                     token: text,
@@ -83,20 +95,40 @@ export async function POST(req: Request) {
                 input: event.data.input,
               });
             } else if (event.event === "on_tool_end") {
-              const toolMessage = new ToolMessage(event.data.output);
+              let toolName = "unknown";
+              const toolOutput = event.data.output;
 
+              // ToolMessageの作成を試みる
+              try {
+                const toolMessage = new ToolMessage(event.data.output);
+                if (toolMessage.lc_kwargs?.name) {
+                  toolName = toolMessage.lc_kwargs.name;
+                } else if (event.name) {
+                  toolName = event.name;
+                }
+              } catch {
+                // エラー時はevent.nameを使用
+                if (event.name) {
+                  toolName = event.name;
+                }
+              }
+
+              // ツール実行結果を送信
               await sendSSEMessage(writer, {
                 type: StreamMessageType.ToolEnd,
-                tool: toolMessage.lc_kwargs.name || "unknown",
-                output: event.data.output,
+                tool: toolName,
+                output:
+                  typeof toolOutput === "object"
+                    ? JSON.stringify(toolOutput, null, 2)
+                    : String(toolOutput),
               });
             }
-
-            // Send completion message without storing the response
-            await sendSSEMessage(writer, {
-              type: StreamMessageType.Done,
-            });
           }
+
+          // Send completion message without storing the response
+          await sendSSEMessage(writer, {
+            type: StreamMessageType.Done,
+          });
         } catch (streamError) {
           console.error("Error in event stream:", streamError);
           await sendSSEMessage(writer, {
@@ -104,7 +136,7 @@ export async function POST(req: Request) {
             error:
               streamError instanceof Error
                 ? streamError.message
-                : "Streaqm processing failed",
+                : "Stream processing failed",
           });
         }
       } catch (error) {

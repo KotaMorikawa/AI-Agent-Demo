@@ -1,36 +1,92 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# AI Agent Demo
 
-## Getting Started
+## 概要
 
-First, run the development server:
+このアプリケーションは、単なるチャットボットを超えた実用的なAIエージェントです。ユーザーとの会話だけでなく、実際にタスクを実行できる能力を持ち、外部ツールと連携して情報検索や様々な処理を行います。
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## 主な機能
+
+- リアルタイムストリーミングレスポンス
+- 外部ツール統合（YouTube、Wikipedia、Google Booksなど）
+- ツール実行過程の可視化（ターミナル風表示）
+- チャット履歴の保存と管理
+- モダンで美しいUI
+
+## 技術スタック
+
+- **フロントエンド**: Next.js 15, Tailwind CSS
+- **バックエンド**: Convex (リアルタイムデータベース)
+- **認証**: Clerk
+- **AI**: DeepSeek LLM
+- **ツール統合**: WxFlows SDK
+- **ワークフロー**: LangGraph
+
+## セットアップ
+
+### 必要環境変数
+
+```
+# 認証
+CLERK_SECRET_KEY=
+NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY=
+
+# Convex
+NEXT_PUBLIC_CONVEX_URL=
+
+# WxFlows
+WXFLOWS_ENDPOINT=
+WXFLOWS_API_KEY=
+
+# LLM
+DEEPSEEK_API_KEY=
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+### インストール
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+npm install
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### 開発サーバー起動
 
-## Learn More
+```bash
+# Convexサーバー起動
+npx convex dev
 
-To learn more about Next.js, take a look at the following resources:
+# フロントエンド開発サーバー起動（別ターミナルで）
+npm run dev
+```
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## 使い方
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+1. アカウント登録/ログイン
+2. ダッシュボードでチャット開始
+3. 質問や指示を入力
+4. AIが回答またはツールを使用して情報検索・タスク実行
+5. ツール使用時はリアルタイムで実行過程を確認可能
 
-## Deploy on Vercel
+## デプロイ
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+# Convexデプロイ
+npx convex deploy
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+# フロントエンドデプロイ（Vercelなど）
+npm run build
+```
+
+## 拡張方法
+
+- WxFlowsディレクトリに新しいツール定義を追加
+- `constants/systemMessage.ts`でAIの指示を拡張
+- フロントエンドUIのカスタマイズは`src/components`で行う
+
+## 注意点
+
+- 各サービス（WxFlows、DeepSeek、Clerkなど）のアカウントとAPIキーが必要
+- ツール呼び出しには適切な権限設定とレート制限に注意
+- ストリーミングレスポンスの処理にはサーバーリソースを考慮
+
+## 貢献
+
+プルリクエスト大歓迎です。新機能の追加や既存機能の改善など、ぜひご協力ください。

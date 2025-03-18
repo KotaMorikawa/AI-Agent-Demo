@@ -49,16 +49,6 @@ export const initializeModel = () => {
     temperature: 0.7,
     maxTokens: 4096,
     streaming: true,
-    callbacks: [
-      {
-        handleLLMStart: async () => {},
-        handleLLMEnd: async (output) => {
-          const usage = output.llmOutput?.usage;
-          if (usage) {
-          }
-        },
-      },
-    ],
   }).bindTools(tools);
 
   return model;
@@ -66,6 +56,8 @@ export const initializeModel = () => {
 
 function shouldContinue(state: typeof MessagesAnnotation.State) {
   const messages = state.messages;
+  if (!messages.length) return END;
+
   const lastMessage = messages[messages.length - 1] as AIMessage;
 
   // If the LLM makes a tool call, then we route to the "tools" node
@@ -74,7 +66,7 @@ function shouldContinue(state: typeof MessagesAnnotation.State) {
   }
 
   // If the last message is a tool message, route back to agent
-  if (lastMessage.content && lastMessage._getType() === "tool") {
+  if (lastMessage._getType() === "tool") {
     return "agent";
   }
 
@@ -115,6 +107,7 @@ const createWorkflow = () => {
     .addEdge(START, "agent")
     .addNode("tools", toolNode)
     .addConditionalEdges("agent", shouldContinue)
+    .addEdge("tools", "agent")
     .addEdge("agent", END);
 
   return stateGraph;
@@ -131,18 +124,20 @@ const addCachingHeaders = (messages: BaseMessage[]): BaseMessage[] => {
   const cachedMessages = [...messages];
 
   // Helper to add cache control
-  const addCache = (messages: BaseMessage) => {
-    messages.content = [
-      {
-        type: "text",
-        text: messages.content as string,
-        cache_control: { type: "ephemeral" },
-      },
-    ];
+  const addCache = (message: BaseMessage) => {
+    // Only modify content if it's a string to prevent double-transformation
+    if (typeof message.content === "string") {
+      message.content = [
+        {
+          type: "text",
+          text: message.content,
+          cache_control: { type: "ephemeral" },
+        },
+      ];
+    }
   };
 
   // Cache the last message
-  // console.log("Caching last message");
   addCache(cachedMessages.at(-1)!);
 
   // Find and cache the second-tolast heman message
@@ -166,7 +161,6 @@ export const submitQuestion = async (
 ) => {
   // Add caching headers to messages
   const cachedMessages = addCachingHeaders(messages);
-  console.log("Messages:", cachedMessages);
 
   const workflow = createWorkflow();
 
@@ -176,7 +170,7 @@ export const submitQuestion = async (
 
   // Run the graph and stream
   const stream = await app.streamEvents(
-    { messages },
+    { messages: cachedMessages },
     {
       version: "v2",
       configurable: {

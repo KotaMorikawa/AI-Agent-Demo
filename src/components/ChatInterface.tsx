@@ -158,21 +158,32 @@ const ChatInterface = ({ chatId, initialMessages }: ChatInterfaceProps) => {
               break;
             case StreamMessageType.ToolEnd:
               // Handle completion of tool execution
-              if ("tool" in message && currentTool) {
-                // Replace the "Processing..." message with actual output
+              if ("tool" in message) {
+                // 現在のツール情報がない場合でも処理する
+                const toolName = message.tool;
+                const toolInput = currentTool?.input || "Unknown input";
+                const toolOutput = message.output;
+
+                // Replace the "Processing..." message with actual output or append new output
                 const lastTerminalIndex = fullResponse.lastIndexOf(
                   '<div class="bg-[#1e1e1e]"'
                 );
-                if (lastTerminalIndex !== -1) {
+
+                if (lastTerminalIndex !== -1 && currentTool) {
+                  // 既存の処理中メッセージを置き換え
                   fullResponse =
                     fullResponse.substring(0, lastTerminalIndex) +
-                    formatTerminalOutput(
-                      message.tool,
-                      currentTool.input,
-                      message.output
-                    );
-                  setStreamedResponse(fullResponse);
+                    formatTerminalOutput(toolName, toolInput, toolOutput);
+                } else {
+                  // 新しいツール出力を追加
+                  fullResponse += formatTerminalOutput(
+                    toolName,
+                    toolInput,
+                    toolOutput
+                  );
                 }
+
+                setStreamedResponse(fullResponse);
                 setCurrentTool(null);
               }
               break;
@@ -184,6 +195,11 @@ const ChatInterface = ({ chatId, initialMessages }: ChatInterfaceProps) => {
               break;
             case StreamMessageType.Done:
               // Handle completion of the entire response
+              // responseが空でないか確認
+              if (!fullResponse.trim()) {
+                fullResponse = "エージェントからの応答がありませんでした。";
+              }
+
               const assistantMessage: Doc<"messages"> = {
                 _id: `temp_${Date.now()}`,
                 chatId,
@@ -193,12 +209,16 @@ const ChatInterface = ({ chatId, initialMessages }: ChatInterfaceProps) => {
               } as Doc<"messages">;
 
               // Save the compelete message to the database
-              const convex = getConvexClient();
-              await convex.mutation(api.message.store, {
-                chatId,
-                content: fullResponse,
-                role: "assistant",
-              });
+              try {
+                const convex = getConvexClient();
+                await convex.mutation(api.message.store, {
+                  chatId,
+                  content: fullResponse,
+                  role: "assistant",
+                });
+              } catch (error) {
+                console.error("Failed to save message to DB:", error);
+              }
 
               setMessages((prev) => [...prev, assistantMessage]);
               setStreamedResponse("");

@@ -39,10 +39,10 @@ export const store = mutation({
     role: v.union(v.literal("user"), v.literal("assistant")),
   },
   handler: async (ctx, args) => {
-    // Store message with preserved newlines and HTML
+    // シンプルに保存する - HTMLコンテンツを壊さないよう処理
     const messageId = await ctx.db.insert("messages", {
       chatId: args.chatId,
-      content: args.content.replace(/\\n/g, "\\n").replace(/\\/g, "\\\\"),
+      content: args.content,
       role: args.role,
       createdAt: Date.now(),
     });
